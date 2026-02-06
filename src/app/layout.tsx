@@ -18,6 +18,20 @@ const plexMono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "Cursor Clone",
   description: "Cursor Clone built with Next.js and Tailwind CSS",
+  icons: {
+    icon: [
+      {
+        media: "(prefers-color-scheme: light)",
+        url: "/logo-alt.svg",
+        href: "/logo-alt.svg",
+      },
+      {
+        media: "(prefers-color-scheme: dark)",
+        url: "/logo.svg",
+        href: "/logo.svg",
+      },
+    ],
+  }
 };
 
 export default function RootLayout({
