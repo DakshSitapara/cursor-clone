@@ -18,6 +18,7 @@ import { CreateInput } from "./create-input";
 import { useState } from "react";
 import { TreeItemWrapper } from "./tree-item-wrapper";
 import { RenameInput } from "./rename-input";
+import { useEditor } from "@/features/editor/hooks/use-editor";
 
 export const Tree = ({
     item,
@@ -32,6 +33,8 @@ export const Tree = ({
     const [isOpen, setIsOpen] = useState(false);
     const [isRenaming, setIsRenaming] = useState(false);
     const [creating, setCreating] = useState<"file" | "folder" | null>(null);
+
+    const { openFile, closeTab, activeTabId } = useEditor(projectId);
 
     const renameFile = useRenameFile();
     const deleteFile = useDeleteFile();
@@ -83,6 +86,8 @@ export const Tree = ({
 
         const fileName = item.name;
 
+        const isActive = activeTabId === item._id;
+
         if (isRenaming) {
             return (
                 <RenameInput 
@@ -99,11 +104,14 @@ export const Tree = ({
             <TreeItemWrapper 
                 item={item}
                 level={level}
-                isActive={false}
-                onClick={() => {}}
-                onDoubleClick={() => {}}
+                isActive={isActive}
+                onClick={() => openFile(item._id, { pinned: false })}
+                onDoubleClick={() => openFile(item._id, { pinned: true })}
                 onRename={() => setIsRenaming(true)}
-                onDelete={() => deleteFile({ id: item._id })}
+                onDelete={() => {
+                    closeTab(item._id);
+                    deleteFile({ id: item._id });
+                }}
             >
                 <FileIcon fileName={fileName} autoAssign className="size-4" />
                 <span className="text-sm truncate">
