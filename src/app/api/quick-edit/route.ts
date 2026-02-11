@@ -2,6 +2,7 @@ import { generateText, Output } from "ai";
 import { NextResponse} from "next/server";
 import { z } from "zod";
 import { google } from "@ai-sdk/google";
+import { groq } from '@ai-sdk/groq';
 import { firecrawl } from "@/lib/firecrawl";
 import { auth } from "@clerk/nextjs/server";
 
@@ -95,7 +96,7 @@ export async function POST(req: Request) {
             .replace("{documentation}", documentationContext);
 
         const { output } = await generateText({
-            model: google("gemini-2.0-flash"),
+            model: groq("openai/gpt-oss-120b"),
             output: Output.object({ schema: quickEditSchema }),
             prompt,
         });

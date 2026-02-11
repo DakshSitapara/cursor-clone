@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, IBM_Plex_Mono } from "next/font/google";
+
+import "allotment/dist/style.css";
 import "./globals.css";
 
 import { Providers } from "@/components/providers";
