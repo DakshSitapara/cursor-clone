@@ -108,7 +108,7 @@ export const processMessage = inngest.createFunction(
         name: "title-generator",
         system: TITLE_GENERATOR_SYSTEM_PROMPT,
         model: gemini({
-          model: "gemini-2.0-flash",
+          model: "gemini-2.5-pro",
           apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
           defaultParameters: {
             generationConfig: { temperature: 0.5 },
@@ -148,7 +148,7 @@ export const processMessage = inngest.createFunction(
       description: "An expert AI Coding Agent",
       system: systemPrompt,
       model: gemini({
-        model: "gemini-2.0-flash",
+        model: "gemini-2.5-pro",
         apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
         defaultParameters: {
           generationConfig: { temperature: 0.5, maxOutputTokens: 1000 },

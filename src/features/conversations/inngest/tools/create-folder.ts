@@ -21,7 +21,7 @@ export const createCreateFolderTool = ({
   internalKey,
 }: CreateFolderToolOptions) => {
   return createTool({
-    name: "create-files",
+    name: "create-folder",
     description: "Create a new folder in project",
     parameters: z.object({
       name: z.string().describe("The name of the folder to create"),
