@@ -2,7 +2,7 @@ import { useState } from "react";
 
 import { Id } from "../../../../../convex/_generated/dataModel";
 
-import { useProject } from "@/hooks/use-projects";
+import { useProject } from "../../hooks/use-projects";
 import {
   useCreateFile,
   useCreateFolder,
@@ -25,7 +25,6 @@ import { LoadingRow } from "./loading-row";
 import { Tree } from "./tree";
 
 export const FileExplorer = ({ projectId }: { projectId: Id<"projects"> }) => {
-
   const [isOpen, setIsOpen] = useState(true);
   const [collapseKey, setCollapseKey] = useState(0);
   const [creating, setCreating] = useState<"file" | "folder" | null>(null);

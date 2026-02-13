@@ -8,7 +8,7 @@ import {
   TITLE_GENERATOR_SYSTEM_PROMPT,
 } from "./constants";
 import { DEFAULT_CONVERSATION_TITLE } from "../constants";
-import { createAgent, createNetwork, gemini } from "@inngest/agent-kit";
+import { createAgent, createNetwork, gemini, openai } from "@inngest/agent-kit";
 import { createReadFilesTool } from "./tools/read-files";
 import { createListFilesTool } from "./tools/list-files";
 import { createUpdateFileTool } from "./tools/update-file";
@@ -96,7 +96,7 @@ export const processMessage = inngest.createFunction(
         .map((message) => `${message.role.toUpperCase()}: ${message.content}`)
         .join("\n\n");
       systemPrompt += `\n\n##Previous conversation(for context only -do not repeat these responses):
-        \n${historyText}\n\n#Current Request:\nResponsed  to ONLY to hte user's new message below.
+        \n${historyText}\n\n#Current Request:\nRespond  to ONLY to hte user's new message below.
          Do not repeat or reference your previous conversation.`;
     }
 
@@ -147,12 +147,10 @@ export const processMessage = inngest.createFunction(
       name: "Cursor Clone",
       description: "An expert AI Coding Agent",
       system: systemPrompt,
-      model: gemini({
-        model: "gemini-2.5-pro",
-        apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
-        defaultParameters: {
-          generationConfig: { temperature: 0.5, maxOutputTokens: 1000 },
-        },
+      model: openai({
+        model: "z-ai/glm-4.7-flash",
+        apiKey: process.env.OPENROUTER_API_KEY,
+        baseUrl: "https://openrouter.ai/api/v1/",
       }),
       tools: [
         createListFilesTool({ internalKey, projectId }),
