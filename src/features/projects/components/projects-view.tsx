@@ -10,6 +10,7 @@ import { FaGithub } from "react-icons/fa";
 import { ProjectsList } from "./projects-list";
 import { ProjectsCommandDialog } from "./projects-command-dialog";
 import { useCreateProject } from "../hooks/use-projects";
+import { ImportGithubDialog } from "./import-github-dialog";
 
 const font = Poppins({
   subsets: ["latin"],
@@ -20,9 +21,14 @@ export const ProjectsView = () => {
   const createProject = useCreateProject();
 
   const [CommandDialogOpen, setCommandDialogOpen] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   const handleOpenCommandDialog = () => {
     setCommandDialogOpen(true);
+  };
+
+  const handleOpenImportDialog = () => {
+    setImportDialogOpen(true);
   };
 
   useEffect(() => {
@@ -32,6 +38,16 @@ export const ProjectsView = () => {
           e.preventDefault();
           setCommandDialogOpen(true);
         }
+        if (e.key === "i") {
+          e.preventDefault();
+          setImportDialogOpen(true);
+        }
+      }
+      if (e.key === "j") {
+        e.preventDefault();
+        createProject({
+          name: "New Project",
+        });
       }
     };
     document.addEventListener("keydown", handleKeyDown);
@@ -46,6 +62,11 @@ export const ProjectsView = () => {
       <ProjectsCommandDialog
         open={CommandDialogOpen}
         onOpenChange={setCommandDialogOpen}
+      />
+
+      <ImportGithubDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
       />
 
       <div className="bg-sidebar flex flex-col items-center justify-center min-h-screen p-6 md:p-16">
@@ -92,7 +113,7 @@ export const ProjectsView = () => {
               </Button>
               <Button
                 variant="outline"
-                onClick={() => {}}
+                onClick={handleOpenImportDialog}
                 className="h-full bg-background items-start justify-start flex flex-col p-4 gap-6 border rounded-none"
               >
                 <div className="flex items-center justify-between w-full">
