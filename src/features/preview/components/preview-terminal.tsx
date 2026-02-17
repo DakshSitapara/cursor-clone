@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
+import { useTerminalTheme } from "../utils/terminalTheme";
 
 import "@xterm/xterm/css/xterm.css";
 
@@ -16,6 +17,8 @@ export const PreviewTerminal = ({ output }: PreviewTerminalProps) => {
   const fitAddonRef = useRef<FitAddon | null>(null);
   const lastLengthRef = useRef(0);
 
+  const terminalTheme = useTerminalTheme();
+
   useEffect(() => {
     if (!containerRef.current) return;
 
@@ -24,9 +27,7 @@ export const PreviewTerminal = ({ output }: PreviewTerminalProps) => {
       disableStdin: true,
       fontSize: 12,
       fontFamily: "monospace",
-      theme: {
-        background: "#1f2228",
-      },
+      theme: terminalTheme,
     });
 
     const fitAddon = new FitAddon();
@@ -52,7 +53,7 @@ export const PreviewTerminal = ({ output }: PreviewTerminalProps) => {
       terminalRef.current = null;
       fitAddonRef.current = null;
     };
-  }, []);
+  }, [terminalTheme]);
 
   useEffect(() => {
     if (!terminalRef.current) return;
@@ -72,7 +73,7 @@ export const PreviewTerminal = ({ output }: PreviewTerminalProps) => {
   return (
     <div
       ref={containerRef}
-      className="flex-1 min-h-0 p-3 [&_.xterm]:h-full! [&_.xterm-viewport]:h-full! [&_.xterm-screen]:h-full! bg-sidebar"
+      className="flex-1 min-h-0 p-3 [&_.xterm]:h-full! [&_.xterm-viewport]:h-full! [&_.xterm-screen]:h-full! bg-background"
     />
   );
 };
