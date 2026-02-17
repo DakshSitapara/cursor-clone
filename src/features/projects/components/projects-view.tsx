@@ -9,8 +9,8 @@ import { Kbd } from "@/components/ui/kbd";
 import { FaGithub } from "react-icons/fa";
 import { ProjectsList } from "./projects-list";
 import { ProjectsCommandDialog } from "./projects-command-dialog";
-import { useCreateProject } from "../hooks/use-projects";
 import { ImportGithubDialog } from "./import-github-dialog";
+import { NewProjectDialog } from "./new-project-dialog";
 
 const font = Poppins({
   subsets: ["latin"],
@@ -18,10 +18,13 @@ const font = Poppins({
 });
 
 export const ProjectsView = () => {
-  const createProject = useCreateProject();
-
   const [CommandDialogOpen, setCommandDialogOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [newProjectDialogOpen, setNewProjectDialogOpen] = useState(false);
+
+  const handleOpenNewProjectDialog = () => {
+    setNewProjectDialogOpen(true);
+  };
 
   const handleOpenCommandDialog = () => {
     setCommandDialogOpen(true);
@@ -45,9 +48,7 @@ export const ProjectsView = () => {
       }
       if (e.key === "j") {
         e.preventDefault();
-        createProject({
-          name: "New Project",
-        });
+        handleOpenNewProjectDialog();
       }
     };
     document.addEventListener("keydown", handleKeyDown);
@@ -67,6 +68,11 @@ export const ProjectsView = () => {
       <ImportGithubDialog
         open={importDialogOpen}
         onOpenChange={setImportDialogOpen}
+      />
+
+      <NewProjectDialog
+        open={newProjectDialogOpen}
+        onOpenChange={setNewProjectDialogOpen}
       />
 
       <div className="bg-sidebar flex flex-col items-center justify-center min-h-screen p-6 md:p-16">
@@ -100,7 +106,7 @@ export const ProjectsView = () => {
             <div className="grid grid-cols-2 gap-2">
               <Button
                 variant="outline"
-                onClick={() => createProject({ name: "New Project" })}
+                onClick={handleOpenNewProjectDialog}
                 className="h-full bg-background items-start justify-start flex flex-col p-4 gap-6 border rounded-none"
               >
                 <div className="flex items-center justify-between w-full">

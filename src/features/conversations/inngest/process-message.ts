@@ -107,12 +107,10 @@ export const processMessage = inngest.createFunction(
       const titleAgent = createAgent({
         name: "title-generator",
         system: TITLE_GENERATOR_SYSTEM_PROMPT,
-        model: gemini({
-          model: "gemini-2.5-pro",
-          apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
-          defaultParameters: {
-            generationConfig: { temperature: 0.5 },
-          },
+        model: openai({
+          model: "z-ai/glm-4.7-flash",
+          apiKey: process.env.OPENROUTER_API_KEY,
+          baseUrl: "https://openrouter.ai/api/v1/",
         }),
       });
 
