@@ -48,7 +48,7 @@ export const ProjectsView = () => {
       }
       if (e.key === "j") {
         e.preventDefault();
-        handleOpenNewProjectDialog();
+        setNewProjectDialogOpen(true);
       }
     };
     document.addEventListener("keydown", handleKeyDown);

@@ -36,7 +36,7 @@ import {
 
 import { Id } from "../../../../convex/_generated/dataModel";
 import { DEFAULT_CONVERSATION_TITLE } from "../constants";
-import { PastConversationDialog } from "./past-conversation-dilog";
+import { PastConversationDialog } from "./past-conversation-dialog";
 
 interface ConversationSidebarProps {
   projectId: Id<"projects">;
