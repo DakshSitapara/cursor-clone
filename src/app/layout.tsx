@@ -7,6 +7,9 @@ import "./globals.css";
 import { Providers } from "@/components/providers";
 import { Toaster } from "@/components/ui/sonner";
 
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
+
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
@@ -34,7 +37,7 @@ export const metadata: Metadata = {
         href: "/logo.svg",
       },
     ],
-  }
+  },
 };
 
 export default function RootLayout({
@@ -45,13 +48,13 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} ${plexMono.variable} antialiased`}>
-
         <Providers>
           {children}
+          <SpeedInsights />
+          <Analytics />
           <Toaster />
         </Providers>
-        
       </body>
     </html>
   );
-} 
+}
