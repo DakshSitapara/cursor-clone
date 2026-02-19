@@ -68,7 +68,7 @@ const createQuickEditTooltip = (state : EditorState ) : readonly Tooltip[] => {
         const cancelButton = document.createElement("button");
         cancelButton.type = "button";
         cancelButton.textContent = "Cancel";
-        cancelButton.className = "font-snas p-1 px-2 text-muted-foreground hover:bg-foreground/10 hover:text-foreground rounded-sm";
+        cancelButton.className = "font-sans p-1 px-2 text-muted-foreground hover:bg-foreground/10 hover:text-foreground rounded-sm";
         cancelButton.onclick = () => {
           if(currentAbortController){
             currentAbortController.abort();
@@ -84,7 +84,7 @@ const createQuickEditTooltip = (state : EditorState ) : readonly Tooltip[] => {
         const submitButton = document.createElement("button");
         submitButton.type = "submit";
         submitButton.textContent = "Submit";
-        submitButton.className = "font-snas p-1 px-2 text-muted-foreground hover:bg-foreground/10 hover:text-foreground rounded-sm";
+        submitButton.className = "font-sans p-1 px-2 text-muted-foreground hover:bg-foreground/10 hover:text-foreground rounded-sm";
 
         form.onsubmit = async (e) => {
           e.preventDefault();
@@ -100,7 +100,7 @@ const createQuickEditTooltip = (state : EditorState ) : readonly Tooltip[] => {
           const fullCode = editorView.state.doc.toString();
 
           submitButton.disabled = true;
-          cancelButton.textContent = "Editing...";
+          submitButton.textContent = "Editing...";
 
           currentAbortController = new AbortController();
           const editedCode = await fetcher(
@@ -125,7 +125,7 @@ const createQuickEditTooltip = (state : EditorState ) : readonly Tooltip[] => {
           })
         }else{
           submitButton.disabled = false;
-          cancelButton.textContent = "Submit";
+          cancelButton.textContent = "Cancel";
         }
           currentAbortController = null;
         }

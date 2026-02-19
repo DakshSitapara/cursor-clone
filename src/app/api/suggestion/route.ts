@@ -2,6 +2,7 @@ import { generateText, Output } from "ai";
 import { NextResponse} from "next/server";
 import { z } from "zod";
 import { google } from "@ai-sdk/google";
+import { groq } from '@ai-sdk/groq';
 import { auth } from "@clerk/nextjs/server";
 
 const suggestionSchema = z.object({
@@ -81,10 +82,10 @@ export async function POST(request: Request) {
             .replace("{lineNumber}", lineNumber.toString());
 
         const { output } = await generateText({
-            model: google("gemini-2.0-flash-001"),
+            model: groq("openai/gpt-oss-120b"),
             output: Output.object({ schema: suggestionSchema }),
             prompt,
-        })
+        });
 
         return NextResponse.json({suggestion: output.suggestion});
     
