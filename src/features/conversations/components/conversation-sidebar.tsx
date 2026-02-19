@@ -1,7 +1,13 @@
 import ky from "ky";
 import { toast } from "sonner";
 import { useState } from "react";
-import { CopyIcon, HistoryIcon, LoaderIcon, PlusIcon } from "lucide-react";
+import {
+  CopyIcon,
+  HistoryIcon,
+  LoaderIcon,
+  PlusIcon,
+  CheckIcon,
+} from "lucide-react";
 
 import {
   Conversation,
@@ -37,6 +43,7 @@ import {
 import { Id } from "../../../../convex/_generated/dataModel";
 import { DEFAULT_CONVERSATION_TITLE } from "../constants";
 import { PastConversationDialog } from "./past-conversation-dialog";
+import { Shimmer } from "@/components/ai-elements/shimmer";
 
 interface ConversationSidebarProps {
   projectId: Id<"projects">;
@@ -50,6 +57,7 @@ export const ConversationSidebar = ({
     useState<Id<"conversations"> | null>(null);
 
   const [pastConversationOpen, setPastConversationOpen] = useState(false);
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
 
   const createConversation = useCreateConversation();
   const conversations = useConversations(projectId);
@@ -63,6 +71,20 @@ export const ConversationSidebar = ({
   const isProcessing = conversationMessages?.some(
     (message) => message.status === "processing",
   );
+
+  const handleSelectMessage = async (message: string, messageId: string) => {
+    try {
+      await navigator.clipboard.writeText(message);
+
+      setCopiedMessageId(messageId);
+
+      setTimeout(() => {
+        setCopiedMessageId(null);
+      }, 2000);
+    } catch {
+      toast.error("Failed to copy");
+    }
+  };
 
   const handleCancel = async () => {
     try {
@@ -151,13 +173,13 @@ export const ConversationSidebar = ({
         </div>
         <Conversation className="flex-1">
           <ConversationContent>
-            {conversationMessages?.map((message, messageIndex) => (
+            {conversationMessages?.map((message) => (
               <Message key={message._id} from={message.role}>
                 <MessageContent>
                   {message.status === "processing" ? (
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <LoaderIcon className="animate-spin size-4" />
-                      <span>Thinking...</span>
+                    <div className="flex items-center text-muted-foreground">
+                      <LoaderIcon className="animate-spin size-4 mr-2" />
+                      <Shimmer duration={1}>Thinking...</Shimmer>
                     </div>
                   ) : message.status === "cancelled" ? (
                     <span className="text-muted-foreground italic">
@@ -170,17 +192,20 @@ export const ConversationSidebar = ({
                   )}
                 </MessageContent>
                 {message.role === "assistant" &&
-                  message.status === "complete" &&
-                  messageIndex === (conversationMessages?.length ?? 0) - 1 && (
+                  message.status === "complete" && (
                     <MessageActions>
                       <MessageAction
                         label="Copy"
                         variant="ghost"
                         onClick={() =>
-                          navigator.clipboard.writeText(message.content)
+                          handleSelectMessage(message.content, message._id)
                         }
                       >
-                        <CopyIcon className="size-4" />
+                        {copiedMessageId === message._id ? (
+                          <CheckIcon className="size-4" />
+                        ) : (
+                          <CopyIcon className="size-4" />
+                        )}
                       </MessageAction>
                     </MessageActions>
                   )}
