@@ -9,6 +9,8 @@ import { inngest } from "@/inngest/client";
 const requestSchema = z.object({
   conversationId: z.string(),
   message: z.string(),
+  model: z.string().optional().default("qwen/qwen3-coder:free"),
+  supportsTools: z.boolean().optional().default(true),
 });
 
 export async function POST(request: Request) {
@@ -29,8 +31,8 @@ export async function POST(request: Request) {
 
   const body = await request.json();
 
-  const { conversationId, message } = requestSchema.parse(body);
-
+  const { conversationId, message, model, supportsTools } =
+    requestSchema.parse(body);
   const conversation = await convex.query(api.system.getConversationById, {
     internalKey,
     conversationId: conversationId as Id<"conversations">,
@@ -96,6 +98,8 @@ export async function POST(request: Request) {
       conversationId,
       message,
       projectId,
+      model,
+      supportsTools,
     },
   });
 

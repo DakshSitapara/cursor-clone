@@ -8,7 +8,7 @@ import {
   TITLE_GENERATOR_SYSTEM_PROMPT,
 } from "./constants";
 import { DEFAULT_CONVERSATION_TITLE } from "../constants";
-import { createAgent, createNetwork, gemini, openai } from "@inngest/agent-kit";
+import { createAgent, createNetwork, openai } from "@inngest/agent-kit";
 import { createReadFilesTool } from "./tools/read-files";
 import { createListFilesTool } from "./tools/list-files";
 import { createUpdateFileTool } from "./tools/update-file";
@@ -23,6 +23,8 @@ interface MessageEvent {
   conversationId: Id<"conversations">;
   projectId: Id<"projects">;
   message: string;
+  model?: string;
+  supportsTools?: boolean;
 }
 
 export const processMessage = inngest.createFunction(
@@ -43,7 +45,7 @@ export const processMessage = inngest.createFunction(
           return await convex.mutation(api.system.updateMessageContent, {
             messageId,
             internalKey,
-            content: "AI failed to process your message (TODO)",
+            content: "AI failed to process your message. Please try again.",
           });
         });
       }
@@ -53,8 +55,16 @@ export const processMessage = inngest.createFunction(
     event: "message/sent",
   },
   async ({ event, step }) => {
-    const { messageId, message, conversationId, projectId } =
-      event.data as MessageEvent;
+    const {
+      messageId,
+      message,
+      conversationId,
+      projectId,
+      model,
+      supportsTools,
+    } = event.data as MessageEvent;
+
+    const activeModel = model ?? "qwen/qwen3-coder:free";
 
     const internalKey = process.env.CURSOR_CLONE_CONVEX_INTERNAL_KEY;
 
@@ -88,16 +98,14 @@ export const processMessage = inngest.createFunction(
     let systemPrompt = CODING_AGENT_SYSTEM_PROMPT;
 
     const contextMessages = recentMessages.filter(
-      (message) => message._id === messageId && message.content.trim() !== "",
+      (msg) => msg._id !== messageId && msg.content.trim() !== "",
     );
 
     if (contextMessages.length > 0) {
       const historyText = contextMessages
-        .map((message) => `${message.role.toUpperCase()}: ${message.content}`)
+        .map((msg) => `${msg.role.toUpperCase()}: ${msg.content}`)
         .join("\n\n");
-      systemPrompt += `\n\n##Previous conversation(for context only -do not repeat these responses):
-        \n${historyText}\n\n#Current Request:\nRespond  to ONLY to hte user's new message below.
-         Do not repeat or reference your previous conversation.`;
+      systemPrompt += `\n\n## Previous conversation (for context only — do not repeat these responses):\n${historyText}\n\n## Current Request:\nRespond ONLY to the user's new message below. Do not repeat or reference previous responses.`;
     }
 
     const shouldGenerateTitle =
@@ -108,7 +116,7 @@ export const processMessage = inngest.createFunction(
         name: "title-generator",
         system: TITLE_GENERATOR_SYSTEM_PROMPT,
         model: openai({
-          model: "z-ai/glm-4.7-flash",
+          model: activeModel,
           apiKey: process.env.OPENROUTER_API_KEY,
           baseUrl: "https://openrouter.ai/api/v1/",
         }),
@@ -116,15 +124,15 @@ export const processMessage = inngest.createFunction(
 
       const { output } = await titleAgent.run(message, { step });
 
-      const textMessage = output.find(
-        (message) => message.type === "text" && message.role === "assistant",
+      const titleMessage = output.find(
+        (msg) => msg.type === "text" && msg.role === "assistant",
       );
 
-      if (textMessage?.type === "text") {
+      if (titleMessage?.type === "text") {
         const title =
-          typeof textMessage.content === "string"
-            ? textMessage.content.trim()
-            : textMessage.content
+          typeof titleMessage.content === "string"
+            ? titleMessage.content.trim()
+            : titleMessage.content
                 .map((c) => c.text)
                 .join("")
                 .trim();
@@ -146,20 +154,22 @@ export const processMessage = inngest.createFunction(
       description: "An expert AI Coding Agent",
       system: systemPrompt,
       model: openai({
-        model: "z-ai/glm-4.7-flash",
+        model: activeModel,
         apiKey: process.env.OPENROUTER_API_KEY,
         baseUrl: "https://openrouter.ai/api/v1/",
       }),
-      tools: [
-        createListFilesTool({ internalKey, projectId }),
-        createReadFilesTool({ internalKey }),
-        createUpdateFileTool({ internalKey }),
-        createCreateFilesTool({ internalKey, projectId }),
-        createCreateFolderTool({ internalKey, projectId }),
-        createDeleteFilesTool({ internalKey }),
-        createRenameFileTool({ internalKey }),
-        createScrapeUrlsTool(),
-      ],
+      tools: supportsTools
+        ? [
+            createListFilesTool({ internalKey, projectId }),
+            createReadFilesTool({ internalKey }),
+            createUpdateFileTool({ internalKey }),
+            createCreateFilesTool({ internalKey, projectId }),
+            createCreateFolderTool({ internalKey, projectId }),
+            createDeleteFilesTool({ internalKey }),
+            createRenameFileTool({ internalKey }),
+            createScrapeUrlsTool(),
+          ]
+        : [],
     });
 
     const network = createNetwork({
@@ -169,10 +179,10 @@ export const processMessage = inngest.createFunction(
       router: ({ network }) => {
         const lastResult = network.state.results.at(-1);
         const hasTextResponse = lastResult?.output.some(
-          (message) => message.type === "text" && message.role === "assistant",
+          (msg) => msg.type === "text" && msg.role === "assistant",
         );
         const hasToolCalls = lastResult?.output.some(
-          (message) => message.type === "tool_call",
+          (msg) => msg.type === "tool_call",
         );
         if (hasTextResponse && !hasToolCalls) {
           return undefined;
@@ -184,11 +194,11 @@ export const processMessage = inngest.createFunction(
     const result = await network.run(message);
     const lastResult = result.state.results.at(-1);
     const textMessage = lastResult?.output.find(
-      (message) => message.type === "text" && message.role === "assistant",
+      (msg) => msg.type === "text" && msg.role === "assistant",
     );
 
     let assistantResponse =
-      "I Processed Your Request. Let me know if you need anything else.";
+      "I processed your request. Let me know if you need anything else.";
 
     if (textMessage?.type === "text") {
       assistantResponse =
@@ -204,6 +214,7 @@ export const processMessage = inngest.createFunction(
         content: assistantResponse,
       });
     });
+
     return { success: true, messageId, conversationId };
   },
 );
