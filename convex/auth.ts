@@ -1,6 +1,6 @@
 import { MutationCtx, QueryCtx } from "./_generated/server";
 
-export const verifyAuth = async(ctx: MutationCtx | QueryCtx) => {
+export const verifyAuth = async (ctx: MutationCtx | QueryCtx) => {
     const identity = await ctx.auth.getUserIdentity();
         
         if (!identity) {

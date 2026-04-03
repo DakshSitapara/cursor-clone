@@ -3,6 +3,21 @@ import { v } from "convex/values";
 import { verifyAuth } from "./auth";
 import { Id, Doc } from "./_generated/dataModel";
 
+const validateFileName = (name: string) => {
+  if (!name || name.trim().length === 0) {
+    throw new Error("File name cannot be empty");
+  }
+  if (name.length > 255) {
+    throw new Error("File name cannot exceed 255 characters");
+  }
+  if (name.includes("..") || name.includes("/") || name.includes("\\")) {
+    throw new Error("File name contains invalid characters");
+  }
+  if (/^\.+$/.test(name)) {
+    throw new Error("File name cannot be only dots");
+  }
+};
+
 export const getFiles = query({
     args: {
         projectId: v.id("projects"),
@@ -146,15 +161,17 @@ export const createFile = mutation({
         }
 
         if(project.ownerId !== identity.subject) {
-            throw new Error("Unauthorized to access this project");
+            throw new Error("Unauthorized access to this project");
         }
+
+        validateFileName(args.name);
 
         const files = await ctx.db
             .query("files")
-            .withIndex("by_project_parent", (q) => 
+            .withIndex("by_project_parent", (q) =>
                 q.eq("projectId", args.projectId).eq("parentId", args.parentId))
             .collect();
-        
+
         const existing = files.find((file) => file.name === args.name && file.type === "file");
 
         if(existing) {
@@ -193,15 +210,17 @@ export const createFolder = mutation({
         }
 
         if(project.ownerId !== identity.subject) {
-            throw new Error("Unauthorized to access this project");
+            throw new Error("Unauthorized access to this project");
         }
+
+        validateFileName(args.name);
 
         const files = await ctx.db
             .query("files")
-            .withIndex("by_project_parent", (q) => 
+            .withIndex("by_project_parent", (q) =>
                 q.eq("projectId", args.projectId).eq("parentId", args.parentId))
             .collect();
-        
+
         const existing = files.find((file) => file.name === args.name && file.type === "folder");
 
         if(existing) {
@@ -245,12 +264,14 @@ export const renameFile = mutation({
         }
 
         if(project.ownerId !== identity.subject) {
-            throw new Error("Unauthorized to access this project");
+            throw new Error("Unauthorized access to this project");
         }
+
+        validateFileName(args.newName);
 
         const siblings = await ctx.db
             .query("files")
-            .withIndex("by_project_parent", (q) => 
+            .withIndex("by_project_parent", (q) =>
                 q.eq("projectId", file.projectId).eq("parentId", file.parentId))
             .collect();
 
@@ -263,7 +284,7 @@ export const renameFile = mutation({
         const now = Date.now();
 
         await ctx.db.patch("files", args.id, { name: args.newName, updatedAt: now });
-        
+
         await ctx.db.patch("projects", file.projectId, { updatedAt: now });
     }
 })

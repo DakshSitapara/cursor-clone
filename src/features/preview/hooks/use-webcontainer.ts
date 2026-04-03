@@ -79,6 +79,39 @@ export const useWebcontainer = ({
         const fileTree = buildFileTree(files);
         await container.mount(fileTree);
 
+        const hasPackageJson = files.some((f) => {
+          const filePath = getFilePath(
+            f,
+            new Map(files.map((file) => [file._id, file])),
+          );
+          return filePath === "package.json" && f.type === "file";
+        });
+        if (!hasPackageJson) {
+          throw new Error(
+            "package.json not found. Please ensure your project has a package.json file.",
+          );
+        }
+
+        const filesMap = new Map(files.map((file) => [file._id, file]));
+        for (const file of files) {
+          if (file.type !== "file") continue;
+
+          const filePath = getFilePath(file, filesMap);
+
+          if (
+            file.content !== undefined &&
+            file.content !== null &&
+            file.content !== ""
+          ) {
+            try {
+              await container.fs.writeFile(filePath, file.content);
+            } catch (err) {
+              console.error(`Failed to write file ${filePath}:`, err);
+              appendOutput(`Warning: Failed to write ${filePath}\n`);
+            }
+          }
+        }
+
         container.on("server-ready", (_port, url) => {
           setPreviewUrl(url);
           setStatus("running");
@@ -89,32 +122,78 @@ export const useWebcontainer = ({
         const installCmd = settings?.installCommand || "npm install";
         const [installBin, ...installArgs] = installCmd?.split(" ");
         appendOutput(`$ ${installCmd}\n`);
-        const installProcess = await container.spawn(installBin, installArgs);
-        installProcess.output.pipeTo(
-          new WritableStream({
-            write(data) {
-              appendOutput(data);
-            },
-          }),
-        );
-        const installExitCode = await installProcess.exit;
-        if (installExitCode !== 0) {
+
+        try {
+          const installProcess = await container.spawn(installBin, installArgs);
+          installProcess.output.pipeTo(
+            new WritableStream({
+              write(data) {
+                appendOutput(data);
+              },
+            }),
+          );
+
+          const installPromise = installProcess.exit;
+          const timeoutPromise = new Promise<never>((_, reject) => {
+            setTimeout(
+              () => {
+                reject(
+                  new Error(
+                    "Installation timed out after 5 minutes. Try checking your dependencies or network connection.",
+                  ),
+                );
+              },
+              5 * 60 * 1000,
+            );
+          });
+
+          const installExitCode = await Promise.race([
+            installPromise,
+            timeoutPromise,
+          ]);
+
+          if (installExitCode !== 0) {
+            throw new Error(
+              `Installation failed with exit code ${installExitCode}. Check the terminal output for details.`,
+            );
+          }
+        } catch (installError) {
           throw new Error(
-            `${installCmd} failed with exit code ${installExitCode}`,
+            `Installation failed: ${installError instanceof Error ? installError.message : "Unknown error"}`,
           );
         }
 
         const devCmd = settings?.devCommand || "npm run dev";
         const [devBin, ...devArgs] = devCmd?.split(" ");
         appendOutput(`\n$ ${devCmd}\n`);
-        const devProcess = await container.spawn(devBin, devArgs);
-        devProcess.output.pipeTo(
-          new WritableStream({
-            write(data) {
-              appendOutput(data);
-            },
-          }),
-        );
+
+        try {
+          const devProcess = await container.spawn(devBin, devArgs);
+          devProcess.output.pipeTo(
+            new WritableStream({
+              write(data) {
+                appendOutput(data);
+              },
+            }),
+          );
+
+          devProcess.exit.then((exitCode) => {
+            if (exitCode !== 0 && status !== "error") {
+              setError(`Dev server exited with code ${exitCode}`);
+              setStatus("error");
+            }
+          });
+
+          setTimeout(() => {
+            if (status === "installing") {
+              setStatus("running");
+            }
+          }, 10000);
+        } catch (spawnError) {
+          throw new Error(
+            `Failed to start dev server: ${spawnError instanceof Error ? spawnError.message : "Unknown error"}. Check your dev command in settings.`,
+          );
+        }
       } catch (error) {
         setError(error instanceof Error ? error.message : "Unknown error");
         setStatus("error");
@@ -122,6 +201,7 @@ export const useWebcontainer = ({
     };
 
     start();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     enabled,
     files,
@@ -136,12 +216,28 @@ export const useWebcontainer = ({
 
     const filesMap = new Map(files.map((file) => [file._id, file]));
 
-    for (const file of files) {
-      if (file.type !== "file" || !file.storageId || !file.content) continue;
+    const updateFiles = async () => {
+      for (const file of files) {
+        if (file.type !== "file") continue;
 
-      const filePath = getFilePath(file, filesMap);
-      container.fs.writeFile(filePath, file.content);
-    }
+        const filePath = getFilePath(file, filesMap);
+
+        if (
+          file.content !== undefined &&
+          file.content !== null &&
+          file.content !== ""
+        ) {
+          try {
+            await container.fs.writeFile(filePath, file.content);
+          } catch (err) {
+            console.error(`Failed to update file ${filePath}:`, err);
+          }
+        }
+      }
+    };
+
+    const timeoutId = setTimeout(updateFiles, 500);
+    return () => clearTimeout(timeoutId);
   }, [files, status]);
 
   useEffect(() => {
@@ -150,16 +246,34 @@ export const useWebcontainer = ({
       setStatus("idle");
       setPreviewUrl(null);
       setError(null);
+      setTerminalOutput("");
     }
   }, [enabled]);
 
+  useEffect(() => {
+    return () => {
+      if (containerRef.current) {
+        try {
+          containerRef.current.teardown();
+        } catch (err) {
+          console.error("Error during cleanup:", err);
+        }
+      }
+    };
+  }, []);
+
   const restart = useCallback(() => {
-    teardownWebContainer();
+    try {
+      teardownWebContainer();
+    } catch (err) {
+      console.error("Error during teardown:", err);
+    }
     containerRef.current = null;
     hasStartedRef.current = false;
     setStatus("idle");
     setError(null);
     setPreviewUrl(null);
+    setTerminalOutput("");
     setRestartKey((prev) => prev + 1);
   }, []);
 

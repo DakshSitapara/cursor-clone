@@ -96,9 +96,12 @@ export const PreviewView = ({ projectId }: { projectId: Id<"projects"> }) => {
             )}
             {previewUrl && (
               <iframe
+                key={previewUrl}
                 src={previewUrl}
                 className="size-full border-0"
                 title="Preview"
+                sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                allow="accelerometer; camera; encrypted-media; geolocation; gyroscope; microphone"
               />
             )}
           </Allotment.Pane>

@@ -37,12 +37,13 @@ export const PreviewTerminal = ({ output }: PreviewTerminalProps) => {
     terminalRef.current = terminal;
     fitAddonRef.current = fitAddon;
 
-    if (output) {
-      terminal.write(output);
-      lastLengthRef.current = output.length;
-    }
-
-    requestAnimationFrame(() => fitAddon.fit());
+    requestAnimationFrame(() => {
+      if (output) {
+        terminal.write(output);
+        lastLengthRef.current = output.length;
+      }
+      fitAddon.fit();
+    });
 
     const resizeObserver = new ResizeObserver(() => fitAddon.fit());
     resizeObserver.observe(containerRef.current);

@@ -8,14 +8,16 @@ export const buildFileTree = (files: FileDoc[]): FileSystemTree => {
   const tree: FileSystemTree = {};
   const filesMap = new Map(files.map((file) => [file._id, file]));
 
-  const getPath = (files: FileDoc): string[] => {
-    const parts: string[] = [files.name];
-    let parentId = files.parentId;
+  const getPath = (file: FileDoc): string[] => {
+    const parts: string[] = [file.name];
+    let parentId = file.parentId;
     while (parentId) {
       const parent = filesMap.get(parentId);
       if (parent) {
         parts.unshift(parent.name);
         parentId = parent.parentId;
+      } else {
+        break;
       }
     }
     return parts;
@@ -24,24 +26,23 @@ export const buildFileTree = (files: FileDoc[]): FileSystemTree => {
   for (const file of files) {
     const pathParts = getPath(file);
     let current = tree;
-    for (let i = 0; i < pathParts.length; i++) {
+
+    for (let i = 0; i < pathParts.length - 1; i++) {
       const part = pathParts[i];
-      const isLast = i === pathParts.length - 1;
-      if (isLast) {
-        if (file.type === "folder") {
-          current[part] = { directory: {} };
-        } else if (!file.storageId && file.content !== undefined) {
-          current[part] = { file: { contents: file.content } };
-        } else {
-          if (!current[part]) {
-            current[part] = { directory: {} };
-          }
-          const node = current[part];
-          if ("directory" in node) {
-            current = node.directory;
-          }
-        }
+      if (!current[part]) {
+        current[part] = { directory: {} };
       }
+      const node = current[part];
+      if ("directory" in node) {
+        current = node.directory;
+      }
+    }
+
+    const lastPart = pathParts[pathParts.length - 1];
+    if (file.type === "folder") {
+      current[lastPart] = { directory: {} };
+    } else {
+      current[lastPart] = { file: { contents: file.content ?? "" } };
     }
   }
 

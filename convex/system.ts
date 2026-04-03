@@ -13,6 +13,21 @@ const validateInternalKey = (key: string) => {
   }
 };
 
+const validateFileName = (name: string) => {
+  if (!name || name.trim().length === 0) {
+    throw new Error("File name cannot be empty");
+  }
+  if (name.length > 255) {
+    throw new Error("File name cannot exceed 255 characters");
+  }
+  if (name.includes("..") || name.includes("/") || name.includes("\\")) {
+    throw new Error("File name contains invalid characters");
+  }
+  if (/^\.+$/.test(name)) {
+    throw new Error("File name cannot be only dots");
+  }
+};
+
 export const getConversationById = query({
   args: {
     conversationId: v.id("conversations"),
@@ -115,7 +130,7 @@ export const getRecentMessages = query({
   args: {
     internalKey: v.string(),
     conversationId: v.id("conversations"),
-    limit: v.number(),
+    limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     validateInternalKey(args.internalKey);
@@ -212,6 +227,8 @@ export const createFile = mutation({
   handler: async (ctx, args) => {
     validateInternalKey(args.internalKey);
 
+    validateFileName(args.name);
+
     const file = await ctx.db
       .query("files")
       .withIndex("by_project_parent", (q) =>
@@ -250,6 +267,10 @@ export const createFiles = mutation({
   handler: async (ctx, args) => {
     validateInternalKey(args.internalKey);
 
+    for (const file of args.files) {
+      validateFileName(file.name);
+    }
+
     const existingFiles = await ctx.db
       .query("files")
       .withIndex("by_project_parent", (q) =>
@@ -261,7 +282,7 @@ export const createFiles = mutation({
 
     for (const file of args.files) {
       const existing = existingFiles.find(
-        (file) => file.name === file.name && file.type === "file",
+        (existing) => existing.name === file.name && existing.type === "file",
       );
 
       if (existing) {
@@ -302,6 +323,8 @@ export const createFolder = mutation({
   handler: async (ctx, args) => {
     validateInternalKey(args.internalKey);
 
+    validateFileName(args.name);
+
     const file = await ctx.db
       .query("files")
       .withIndex("by_project_parent", (q) =>
@@ -337,6 +360,8 @@ export const renameFile = mutation({
   },
   handler: async (ctx, args) => {
     validateInternalKey(args.internalKey);
+
+    validateFileName(args.newName);
 
     const file = await ctx.db.get(args.fileId);
 
@@ -468,6 +493,8 @@ export const createBinaryFile = mutation({
   handler: async (ctx, args) => {
     validateInternalKey(args.internalKey);
 
+    validateFileName(args.name);
+
     const files = await ctx.db
       .query("files")
       .withIndex("by_project_parent", (q) =>
@@ -556,7 +583,7 @@ export const getProjectFilesWithUrls = query({
       .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
       .collect();
 
-    return await Promise.all(
+    const results = await Promise.allSettled(
       files.map(async (file) => {
         if (file.storageId) {
           const url = await ctx.storage.getUrl(file.storageId);
@@ -565,6 +592,14 @@ export const getProjectFilesWithUrls = query({
         return { ...file, storageUrl: null };
       }),
     );
+
+    return results.map((result, index) => {
+      if (result.status === "fulfilled") {
+        return result.value;
+      }
+      console.error(`Failed to get URL for file ${files[index]._id}:`, result.reason);
+      return { ...files[index], storageUrl: null };
+    });
   },
 });
 

@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Doc, Id } from "../../../../convex/_generated/dataModel";
 import { useUpdateProjectSettings } from "@/features/projects/hooks/use-projects";
 
-const fromSchema = z.object({
+const formSchema = z.object({
   installCommand: z.string(),
   devCommand: z.string(),
 });
@@ -41,7 +41,7 @@ export const PreviewSettingsPopover = ({
       installCommand: initialValues?.installCommand ?? "",
       devCommand: initialValues?.devCommand ?? "",
     },
-    validators: { onSubmit: fromSchema },
+    validators: { onSubmit: formSchema },
     onSubmit: async ({ value }) => {
       await updateSettings({
         id: projectId,

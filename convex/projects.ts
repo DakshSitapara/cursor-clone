@@ -2,6 +2,18 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { verifyAuth } from "./auth";
 
+const validateProjectName = (name: string) => {
+  if (!name || name.trim().length === 0) {
+    throw new Error("Project name cannot be empty");
+  }
+  if (name.length > 100) {
+    throw new Error("Project name cannot exceed 100 characters");
+  }
+  if (!/^[a-zA-Z0-9_\-\s]+$/.test(name)) {
+    throw new Error("Project name can only contain letters, numbers, spaces, hyphens, and underscores");
+  }
+};
+
 export const updateSettings = mutation({
   args: {
     id: v.id("projects"),
@@ -20,7 +32,7 @@ export const updateSettings = mutation({
     }
 
     if (project.ownerId !== identity.subject) {
-      throw new Error("Unauthorized to access this project");
+      throw new Error("Unauthorized access to this project");
     }
 
     await ctx.db.patch("projects", args.id, {
@@ -36,6 +48,8 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await verifyAuth(ctx);
+
+    validateProjectName(args.name);
 
     const projectId = await ctx.db.insert("projects", {
       name: args.name,
@@ -96,6 +110,16 @@ export const getById = query({
   },
 });
 
+export const exists = query({
+  args: {
+    id: v.id("projects"),
+  },
+  handler: async (ctx, args) => {
+    const project = await ctx.db.get("projects", args.id);
+    return project !== null;
+  },
+});
+
 export const rename = mutation({
   args: {
     id: v.id("projects"),
@@ -103,6 +127,8 @@ export const rename = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await verifyAuth(ctx);
+
+    validateProjectName(args.name);
 
     const project = await ctx.db.get("projects", args.id);
 
