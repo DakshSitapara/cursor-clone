@@ -143,7 +143,7 @@ export const Tree = ({
     return (
       <>
         <button
-          onClick={() => setIsOpen((perv) => !perv)}
+          onClick={() => setIsOpen((prev) => !prev)}
           className="group flex items-center gap-1 h-5.5 w-full hover:bg-accent/30"
           style={{ paddingLeft: getItemPadding(level, false) }}
         >

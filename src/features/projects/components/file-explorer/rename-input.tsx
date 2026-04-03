@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import { ChevronRightIcon } from "lucide-react";
-import { FileIcon, FolderIcon } from "@react-symbols/icons/utils"
+import { FileIcon, FolderIcon } from "@react-symbols/icons/utils";
 import { useState } from "react";
 import { getItemPadding } from "./constants";
 
@@ -48,27 +48,27 @@ export const RenameInput = ({
                     type="text"
                     value={value}
                     onChange={(e) => setValue(e.target.value)}
-                    className="flex-1 bg-transparent text-sm outline-none focus:right-1 focus:ring-inset focus:ring-ring"
+                    className="flex-1 bg-transparent text-sm outline-none focus:ring-1 focus:ring-inset focus:ring-ring"
                     onBlur={handleSubmit}
                     onKeyDown={(e) => {
-                        if(e.key === "Enter"){
-                            handleSubmit();
-                        }else if(e.key === "Escape"){
-                            onCancel();
-                        }
+                      if (e.key === "Enter") {
+                        handleSubmit();
+                      } else if (e.key === "Escape") {
+                        onCancel();
+                      }
                     }}
                     onFocus={(e) => {
-                        if(type === "folder"){
-                            e.currentTarget.select();
-                        }else {
-                            const value = e.currentTarget.value;
-                            const lastdotIndex = value.lastIndexOf(".");
-                            if(lastdotIndex > 0){
-                                e.currentTarget.setSelectionRange(0, lastdotIndex);
-                            }else{
-                                e.currentTarget.select();
-                            }
+                      if (type === "folder") {
+                        e.currentTarget.select();
+                      } else {
+                        const value = e.currentTarget.value;
+                        const lastDotIndex = value.lastIndexOf(".");
+                        if (lastDotIndex > 0) {
+                          e.currentTarget.setSelectionRange(0, lastDotIndex);
+                        } else {
+                          e.currentTarget.select();
                         }
+                      }
                     }}
                 />
         </div>

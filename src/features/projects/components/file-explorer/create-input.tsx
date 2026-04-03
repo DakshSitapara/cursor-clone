@@ -1,5 +1,5 @@
 import { ChevronRightIcon } from "lucide-react";
-import { FileIcon, FolderIcon } from "@react-symbols/icons/utils"
+import { FileIcon, FolderIcon } from "@react-symbols/icons/utils";
 import { useState } from "react";
 import { getItemPadding } from "./constants";
 
@@ -47,14 +47,14 @@ export const CreateInput = ({
                     type="text"
                     value={value}
                     onChange={(e) => setValue(e.target.value)}
-                    className="flex-1 bg-transparent text-sm outline-none focus:right-1 focus:ring-inset focus:ring-ring"
+                    className="flex-1 bg-transparent text-sm outline-none focus:ring-1 focus:ring-inset focus:ring-ring"
                     onBlur={handleSubmit}
                     onKeyDown={(e) => {
-                        if(e.key === "Enter"){
-                            handleSubmit();
-                        }else if(e.key === "Escape"){
-                            onCancel();
-                        }
+                      if (e.key === "Enter") {
+                        handleSubmit();
+                      } else if (e.key === "Escape") {
+                        onCancel();
+                      }
                     }}
                 />
         </div>
