@@ -1,14 +1,11 @@
 import { z } from "zod";
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import {
-  colors,
-  animals,
-  adjectives,
-  uniqueNamesGenerator,
-} from "unique-names-generator";
 
-import { DEFAULT_CONVERSATION_TITLE } from "@/features/conversations/constants";
+import {
+  DEFAULT_CONVERSATION_TITLE,
+  DEFAULT_PROJECT_TITLE,
+} from "@/features/conversations/constants";
 
 import { inngest } from "@/inngest/client";
 import { convex } from "@/lib/convex-client";
@@ -38,17 +35,11 @@ export async function POST(req: Request) {
   const body = await req.json();
   const { prompt } = requestSchema.parse(body);
 
-  const projectName = uniqueNamesGenerator({
-    dictionaries: [adjectives, colors, animals],
-    separator: "-",
-    length: 3,
-  });
-
   const { projectId, conversationId } = await convex.mutation(
     api.system.createProjectWithConversations,
     {
       internalKey,
-      projectName,
+      projectName: DEFAULT_PROJECT_TITLE,
       ownerId: userId,
       conversationTitle: DEFAULT_CONVERSATION_TITLE,
     },

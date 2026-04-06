@@ -597,7 +597,10 @@ export const getProjectFilesWithUrls = query({
       if (result.status === "fulfilled") {
         return result.value;
       }
-      console.error(`Failed to get URL for file ${files[index]._id}:`, result.reason);
+      console.error(
+        `Failed to get URL for file ${files[index]._id}:`,
+        result.reason,
+      );
       return { ...files[index], storageUrl: null };
     });
   },
@@ -647,5 +650,32 @@ export const createProjectWithConversations = mutation({
     });
 
     return { projectId, conversationId };
+  },
+});
+
+export const getProjectById = query({
+  args: {
+    projectId: v.id("projects"),
+    internalKey: v.string(),
+  },
+  handler: async (ctx, args) => {
+    validateInternalKey(args.internalKey);
+    return await ctx.db.get(args.projectId);
+  },
+});
+
+export const updateProjectName = mutation({
+  args: {
+    internalKey: v.string(),
+    projectId: v.id("projects"),
+    name: v.string(),
+  },
+  handler: async (ctx, args) => {
+    validateInternalKey(args.internalKey);
+
+    return await ctx.db.patch(args.projectId, {
+      name: args.name,
+      updatedAt: Date.now(),
+    });
   },
 });

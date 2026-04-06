@@ -60,7 +60,7 @@ import { PastConversationDialog } from "./past-conversation-dialog";
 import { Shimmer } from "@/components/ai-elements/shimmer";
 import { useFreeModels, type FreeModel } from "../hooks/use-free-models";
 
-const DEFAULT_MODEL_ID = "qwen/qwen3-coder:free";
+const DEFAULT_MODEL_ID = "openrouter/free";
 
 function groupModelsByProvider(models: FreeModel[]) {
   const groups = new Map<string, FreeModel[]>();
@@ -98,8 +98,9 @@ export const ConversationSidebar = ({
 
   const activeModel = freeModels.find((m) => m.id === selectedModelId) ?? {
     id: DEFAULT_MODEL_ID,
-    label: "Qwen3 Coder 480B",
-    providerLogo: "alibaba",
+    label: "Unknown Model",
+    provider: "Unknown Provider",
+    providerLogo: "",
     tools: true,
   };
   const createConversation = useCreateConversation();

@@ -6,8 +6,9 @@ import { api } from "../../../../convex/_generated/api";
 import {
   CODING_AGENT_SYSTEM_PROMPT,
   TITLE_GENERATOR_SYSTEM_PROMPT,
+  PROJECT_NAME_GENERATOR_SYSTEM_PROMPT,
 } from "./constants";
-import { DEFAULT_CONVERSATION_TITLE } from "../constants";
+import { DEFAULT_CONVERSATION_TITLE, DEFAULT_PROJECT_TITLE } from "../constants";
 import { createAgent, createNetwork, openai } from "@inngest/agent-kit";
 import { createReadFilesTool } from "./tools/read-files";
 import { createListFilesTool } from "./tools/list-files";
@@ -51,49 +52,35 @@ export const processMessage = inngest.createFunction(
       }
     },
   },
-  {
-    event: "message/sent",
-  },
+  { event: "message/sent" },
   async ({ event, step }) => {
-    const {
-      messageId,
-      message,
-      conversationId,
-      projectId,
-      model,
-      supportsTools,
-    } = event.data as MessageEvent;
+    const { messageId, message, conversationId, projectId, model, supportsTools } =
+      event.data as MessageEvent;
 
-    const activeModel = model ?? "qwen/qwen3-coder:free";
-
+    const activeModel = model ?? "openrouter/free";
     const internalKey = process.env.CURSOR_CLONE_CONVEX_INTERNAL_KEY;
 
     if (!internalKey) {
-      throw new NonRetriableError(
-        "CURSOR_CLONE_CONVEX_INTERNAL_KEY not configured",
-      );
+      throw new NonRetriableError("CURSOR_CLONE_CONVEX_INTERNAL_KEY not configured");
     }
 
     await step.sleep("wait-for-db-sync", "1s");
 
-    const conversation = await step.run("get-conversation", async () => {
-      return await convex.query(api.system.getConversationById, {
-        internalKey,
-        conversationId,
-      });
-    });
+    const [conversation, project] = await Promise.all([
+      step.run("get-conversation", () =>
+        convex.query(api.system.getConversationById, { internalKey, conversationId })
+      ),
+      step.run("get-project", () =>
+        convex.query(api.system.getProjectById, { internalKey, projectId })
+      ),
+    ]);
 
-    if (!conversation) {
-      throw new NonRetriableError("Conversation not found");
-    }
+    if (!conversation) throw new NonRetriableError("Conversation not found");
+    if (!project) throw new NonRetriableError("Project not found");
 
-    const recentMessages = await step.run("get-recent-messages", async () => {
-      return await convex.query(api.system.getRecentMessages, {
-        internalKey,
-        conversationId,
-        limit: 10,
-      });
-    });
+    const recentMessages = await step.run("get-recent-messages", () =>
+      convex.query(api.system.getRecentMessages, { internalKey, conversationId, limit: 10 })
+    );
 
     let systemPrompt = CODING_AGENT_SYSTEM_PROMPT;
 
@@ -108,22 +95,20 @@ export const processMessage = inngest.createFunction(
       systemPrompt += `\n\n## Previous conversation (for context only — do not repeat these responses):\n${historyText}\n\n## Current Request:\nRespond ONLY to the user's new message below. Do not repeat or reference previous responses.`;
     }
 
-    const shouldGenerateTitle =
-      conversation.title === DEFAULT_CONVERSATION_TITLE;
+    const agentModel = openai({
+      model: activeModel,
+      apiKey: process.env.OPENROUTER_API_KEY,
+      baseUrl: "https://openrouter.ai/api/v1/",
+    });
 
-    if (shouldGenerateTitle) {
+    if (conversation.title === DEFAULT_CONVERSATION_TITLE) {
       const titleAgent = createAgent({
         name: "title-generator",
         system: TITLE_GENERATOR_SYSTEM_PROMPT,
-        model: openai({
-          model: activeModel,
-          apiKey: process.env.OPENROUTER_API_KEY,
-          baseUrl: "https://openrouter.ai/api/v1/",
-        }),
+        model: agentModel,
       });
 
       const { output } = await titleAgent.run(message, { step });
-
       const titleMessage = output.find(
         (msg) => msg.type === "text" && msg.role === "assistant",
       );
@@ -132,19 +117,46 @@ export const processMessage = inngest.createFunction(
         const title =
           typeof titleMessage.content === "string"
             ? titleMessage.content.trim()
-            : titleMessage.content
-                .map((c) => c.text)
-                .join("")
-                .trim();
+            : titleMessage.content.map((c) => c.text).join("").trim();
 
         if (title) {
-          await step.run("update-conversation-title", async () => {
-            return await convex.mutation(api.system.updateConversationTitle, {
+          await step.run("update-conversation-title", () =>
+            convex.mutation(api.system.updateConversationTitle, {
               internalKey,
               conversationId,
               title,
-            });
-          });
+            })
+          );
+        }
+      }
+    }
+
+    if (project.name === DEFAULT_PROJECT_TITLE) {
+      const projectNameAgent = createAgent({
+        name: "project-name-generator",
+        system: PROJECT_NAME_GENERATOR_SYSTEM_PROMPT,
+        model: agentModel,
+      });
+
+      const { output } = await projectNameAgent.run(message, { step });
+      const nameMessage = output.find(
+        (msg) => msg.type === "text" && msg.role === "assistant",
+      );
+
+      if (nameMessage?.type === "text") {
+        const name =
+          typeof nameMessage.content === "string"
+            ? nameMessage.content.trim()
+            : nameMessage.content.map((c) => c.text).join("").trim();
+
+        if (name) {
+          await step.run("update-project-name", () =>
+            convex.mutation(api.system.updateProjectName, {
+              internalKey,
+              projectId,
+              name,
+            })
+          );
         }
       }
     }
@@ -153,11 +165,7 @@ export const processMessage = inngest.createFunction(
       name: "Cursor Clone",
       description: "An expert AI Coding Agent",
       system: systemPrompt,
-      model: openai({
-        model: activeModel,
-        apiKey: process.env.OPENROUTER_API_KEY,
-        baseUrl: "https://openrouter.ai/api/v1/",
-      }),
+      model: agentModel,
       tools: supportsTools
         ? [
             createListFilesTool({ internalKey, projectId }),
@@ -184,9 +192,7 @@ export const processMessage = inngest.createFunction(
         const hasToolCalls = lastResult?.output.some(
           (msg) => msg.type === "tool_call",
         );
-        if (hasTextResponse && !hasToolCalls) {
-          return undefined;
-        }
+        if (hasTextResponse && !hasToolCalls) return undefined;
         return codingAgent;
       },
     });
@@ -197,8 +203,7 @@ export const processMessage = inngest.createFunction(
       (msg) => msg.type === "text" && msg.role === "assistant",
     );
 
-    let assistantResponse =
-      "I processed your request. Let me know if you need anything else.";
+    let assistantResponse = "I processed your request. Let me know if you need anything else.";
 
     if (textMessage?.type === "text") {
       assistantResponse =
@@ -207,13 +212,13 @@ export const processMessage = inngest.createFunction(
           : textMessage.content.map((c) => c.text).join("");
     }
 
-    await step.run("update-assistant-message", async () => {
-      return await convex.mutation(api.system.updateMessageContent, {
+    await step.run("update-assistant-message", () =>
+      convex.mutation(api.system.updateMessageContent, {
         messageId,
         internalKey,
         content: assistantResponse,
-      });
-    });
+      })
+    );
 
     return { success: true, messageId, conversationId };
   },
